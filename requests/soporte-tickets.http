@@ -1,0 +1,425 @@
+@baseUrl = http://localhost:8080/api
+@apiKey = grupo8-soporte-2026
+# IDs de los datos iniciales en una base recién creada. Ajustar si la base ya contiene datos.
+@categoriaId = 1
+@usuarioId = 1
+@tecnicoId = 1
+# Ejecutar secuencialmente para capturar IDs; algunas peticiones producen errores intencionales.
+# Reiniciar la BD de pruebas manuales o cambiar nombres/correos antes de repetir toda la colección.
+
+### Listar categorías
+GET {{baseUrl}}/categorias
+
+### Crear categoría (201)
+POST {{baseUrl}}/categorias
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"nombre":"Laboratorio HTTP","descripcion":"Pruebas del cliente HTTP","tiempoRespuestaHoras":24}
+
+> {%
+client.global.set("categoriaNueva", response.body.id);
+%}
+
+### Actualizar categoría (200)
+PUT {{baseUrl}}/categorias/{{categoriaNueva}}
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"nombre":"Laboratorio HTTP","descripcion":"Actualizada","tiempoRespuestaHoras":12}
+
+### Eliminar categoría sin tickets (204)
+DELETE {{baseUrl}}/categorias/{{categoriaNueva}}
+X-API-KEY: {{apiKey}}
+
+### Listar usuarios
+GET {{baseUrl}}/usuarios
+
+### Obtener usuario
+GET {{baseUrl}}/usuarios/{{usuarioId}}
+
+### Crear usuario (201)
+POST {{baseUrl}}/usuarios
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"nombres":"Usuario HTTP","email":"http.usuario@espe.edu.ec","departamento":"Laboratorio","activo":true}
+
+> {%
+client.global.set("usuarioNuevo", response.body.id);
+%}
+
+### Actualizar usuario
+PUT {{baseUrl}}/usuarios/{{usuarioNuevo}}
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"nombres":"Usuario HTTP actualizado","email":"http.usuario@espe.edu.ec","departamento":"TI","activo":true}
+
+### Listar técnicos
+GET {{baseUrl}}/tecnicos
+
+### Obtener técnico
+GET {{baseUrl}}/tecnicos/{{tecnicoId}}
+
+### Crear técnico (201)
+POST {{baseUrl}}/tecnicos
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"nombres":"Técnico HTTP","email":"http.tecnico@espe.edu.ec","especialidadId":{{categoriaId}},"activo":true}
+
+> {%
+client.global.set("tecnicoNuevo", response.body.id);
+%}
+
+### Actualizar técnico
+PUT {{baseUrl}}/tecnicos/{{tecnicoNuevo}}
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"nombres":"Técnico HTTP actualizado","email":"http.tecnico@espe.edu.ec","especialidadId":{{categoriaId}},"activo":true}
+
+### Tickets pendientes de un técnico
+GET {{baseUrl}}/tecnicos/{{tecnicoId}}/tickets-pendientes
+
+### Listar todos los tickets
+GET {{baseUrl}}/tickets
+
+### Filtrar por estado y prioridad
+GET {{baseUrl}}/tickets?estado=ABIERTO&prioridad=ALTA
+
+### Pendientes ordenados por CRITICA > ALTA > MEDIA > BAJA y fecha
+GET {{baseUrl}}/tickets/pendientes
+
+### Estadísticas agrupadas por estado
+GET {{baseUrl}}/tickets/estadisticas
+
+### Crear ticket (201, ABIERTO)
+POST {{baseUrl}}/tickets
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"titulo":"Sin acceso a la red","descripcion":"El equipo no obtiene conexión","prioridad":"ALTA","usuarioId":{{usuarioNuevo}},"categoriaId":{{categoriaId}}}
+
+> {%
+client.global.set("ticketNuevo", response.body.id);
+%}
+
+### Obtener ticket con observaciones
+GET {{baseUrl}}/tickets/{{ticketNuevo}}
+
+### Registrar observación (201)
+POST {{baseUrl}}/tickets/{{ticketNuevo}}/observaciones
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"autor":"Usuario HTTP","contenido":"La falla comenzó esta mañana"}
+
+### Listar observaciones
+GET {{baseUrl}}/tickets/{{ticketNuevo}}/observaciones
+
+### Transición inválida ABIERTO -> CERRADO (409)
+PATCH {{baseUrl}}/tickets/{{ticketNuevo}}/estado
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"estado":"CERRADO"}
+
+### EN_PROCESO sin técnico (422)
+PATCH {{baseUrl}}/tickets/{{ticketNuevo}}/estado
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"estado":"EN_PROCESO"}
+
+### Asignar técnico y lanzar notificación asíncrona (200)
+PATCH {{baseUrl}}/tickets/{{ticketNuevo}}/asignar
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"tecnicoId":{{tecnicoNuevo}}}
+
+### Cambiar estado ABIERTO -> EN_PROCESO (200)
+PATCH {{baseUrl}}/tickets/{{ticketNuevo}}/estado
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"estado":"EN_PROCESO","comentario":"Se inicia revisión de la tarjeta de red"}
+
+### No se elimina técnico con tickets activos (422)
+DELETE {{baseUrl}}/tecnicos/{{tecnicoNuevo}}
+X-API-KEY: {{apiKey}}
+
+### EN_PROCESO -> RESUELTO
+PATCH {{baseUrl}}/tickets/{{ticketNuevo}}/estado
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"estado":"RESUELTO","comentario":"Configuración corregida"}
+
+### RESUELTO -> EN_PROCESO (reapertura)
+PATCH {{baseUrl}}/tickets/{{ticketNuevo}}/estado
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"estado":"EN_PROCESO","comentario":"El usuario reporta una reincidencia"}
+
+### Resolver de nuevo
+PATCH {{baseUrl}}/tickets/{{ticketNuevo}}/estado
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"estado":"RESUELTO"}
+
+### RESUELTO -> CERRADO (registra fechaCierre)
+PATCH {{baseUrl}}/tickets/{{ticketNuevo}}/estado
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"estado":"CERRADO","comentario":"Usuario confirma la solución"}
+
+### Observación en ticket cerrado (422)
+POST {{baseUrl}}/tickets/{{ticketNuevo}}/observaciones
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"autor":"Usuario HTTP","contenido":"Esta observación debe ser rechazada"}
+
+### No se elimina un ticket cerrado (422)
+DELETE {{baseUrl}}/tickets/{{ticketNuevo}}
+X-API-KEY: {{apiKey}}
+
+### Crear ticket abierto para eliminar
+POST {{baseUrl}}/tickets
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"titulo":"Ticket temporal","descripcion":"Se eliminará","prioridad":"BAJA","usuarioId":{{usuarioId}},"categoriaId":{{categoriaId}}}
+
+> {%
+client.global.set("ticketEliminar", response.body.id);
+%}
+
+### Eliminar ticket abierto (204)
+DELETE {{baseUrl}}/tickets/{{ticketEliminar}}
+X-API-KEY: {{apiKey}}
+
+### Sin API key (401), comprobar X-Request-Id y X-Response-Time
+POST {{baseUrl}}/categorias
+Content-Type: application/json
+
+{"nombre":"No autorizado","tiempoRespuestaHoras":10}
+
+### API key incorrecta (401)
+DELETE {{baseUrl}}/tickets/1
+X-API-KEY: incorrecta
+
+### Validación de campos (400 con detalles)
+POST {{baseUrl}}/categorias
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"nombre":"","tiempoRespuestaHoras":0}
+
+### JSON inválido (400)
+POST {{baseUrl}}/tickets
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"titulo":
+
+### Recurso inexistente (404)
+GET {{baseUrl}}/tickets/99999999
+
+### Ruta inexistente (404)
+GET {{baseUrl}}/ruta-inexistente
+
+### Parámetro inválido (400)
+GET {{baseUrl}}/tickets?prioridad=URGENTE
+
+### Email duplicado de usuario (409)
+POST {{baseUrl}}/usuarios
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"nombres":"Usuario duplicado","email":"HTTP.USUARIO@ESPE.EDU.EC","departamento":"TI","activo":true}
+
+### Email duplicado de técnico (409)
+POST {{baseUrl}}/tecnicos
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"nombres":"Técnico duplicado","email":"http.tecnico@espe.edu.ec","activo":true}
+
+### Categoría duplicada de los datos iniciales (409)
+POST {{baseUrl}}/categorias
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"nombre":"Hardware","tiempoRespuestaHoras":24}
+
+### Eliminar categoría con tickets (422)
+DELETE {{baseUrl}}/categorias/{{categoriaId}}
+X-API-KEY: {{apiKey}}
+
+### Auditoría: últimos 50 registros
+GET {{baseUrl}}/auditoria
+
+### Demostración bloqueante (~2000 ms más gastos de HTTP y auditoría)
+POST {{baseUrl}}/demo/notificacion?modo=bloqueante
+X-API-KEY: {{apiKey}}
+
+### Demostración asíncrona (retorna tras encolar)
+POST {{baseUrl}}/demo/notificacion?modo=asincrono
+X-API-KEY: {{apiKey}}
+
+### Demostración: modo por defecto asincrono
+POST {{baseUrl}}/demo/notificacion
+X-API-KEY: {{apiKey}}
+
+### Modo desconocido (400)
+POST {{baseUrl}}/demo/notificacion?modo=desconocido
+X-API-KEY: {{apiKey}}
+
+### Eliminar técnico sin activos (204); conserva el ticket cerrado sin asignación
+DELETE {{baseUrl}}/tecnicos/{{tecnicoNuevo}}
+X-API-KEY: {{apiKey}}
+
+### Preparar técnico exclusivo para prueba de sobrecarga
+POST {{baseUrl}}/tecnicos
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"nombres":"Técnico carga HTTP","email":"http.carga@espe.edu.ec","activo":true}
+
+> {%
+client.global.set("tecnicoCarga", response.body.id);
+%}
+
+### Crear ticket de carga 1
+POST {{baseUrl}}/tickets
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"titulo":"Prueba de carga 1","descripcion":"Ticket activo para verificar capacidad","prioridad":"MEDIA","usuarioId":{{usuarioId}},"categoriaId":{{categoriaId}}}
+
+> {%
+client.global.set("ticketCarga1", response.body.id);
+%}
+
+### Asignación 1: 200, dentro de la capacidad
+PATCH {{baseUrl}}/tickets/{{ticketCarga1}}/asignar
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"tecnicoId":{{tecnicoCarga}}}
+
+### Crear ticket de carga 2
+POST {{baseUrl}}/tickets
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"titulo":"Prueba de carga 2","descripcion":"Ticket activo para verificar capacidad","prioridad":"MEDIA","usuarioId":{{usuarioId}},"categoriaId":{{categoriaId}}}
+
+> {%
+client.global.set("ticketCarga2", response.body.id);
+%}
+
+### Asignación 2: 200, dentro de la capacidad
+PATCH {{baseUrl}}/tickets/{{ticketCarga2}}/asignar
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"tecnicoId":{{tecnicoCarga}}}
+
+### Crear ticket de carga 3
+POST {{baseUrl}}/tickets
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"titulo":"Prueba de carga 3","descripcion":"Ticket activo para verificar capacidad","prioridad":"MEDIA","usuarioId":{{usuarioId}},"categoriaId":{{categoriaId}}}
+
+> {%
+client.global.set("ticketCarga3", response.body.id);
+%}
+
+### Asignación 3: 200, dentro de la capacidad
+PATCH {{baseUrl}}/tickets/{{ticketCarga3}}/asignar
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"tecnicoId":{{tecnicoCarga}}}
+
+### Crear ticket de carga 4
+POST {{baseUrl}}/tickets
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"titulo":"Prueba de carga 4","descripcion":"Ticket activo para verificar capacidad","prioridad":"MEDIA","usuarioId":{{usuarioId}},"categoriaId":{{categoriaId}}}
+
+> {%
+client.global.set("ticketCarga4", response.body.id);
+%}
+
+### Asignación 4: 200, dentro de la capacidad
+PATCH {{baseUrl}}/tickets/{{ticketCarga4}}/asignar
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"tecnicoId":{{tecnicoCarga}}}
+
+### Crear ticket de carga 5
+POST {{baseUrl}}/tickets
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"titulo":"Prueba de carga 5","descripcion":"Ticket activo para verificar capacidad","prioridad":"MEDIA","usuarioId":{{usuarioId}},"categoriaId":{{categoriaId}}}
+
+> {%
+client.global.set("ticketCarga5", response.body.id);
+%}
+
+### Asignación 5: 200, dentro de la capacidad
+PATCH {{baseUrl}}/tickets/{{ticketCarga5}}/asignar
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"tecnicoId":{{tecnicoCarga}}}
+
+### Crear ticket de carga 6
+POST {{baseUrl}}/tickets
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"titulo":"Prueba de carga 6","descripcion":"Ticket activo para verificar capacidad","prioridad":"MEDIA","usuarioId":{{usuarioId}},"categoriaId":{{categoriaId}}}
+
+> {%
+client.global.set("ticketCarga6", response.body.id);
+%}
+
+### Asignación 6: 409, técnico sobrecargado
+PATCH {{baseUrl}}/tickets/{{ticketCarga6}}/asignar
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"tecnicoId":{{tecnicoCarga}}}
+
+### Cancelar un ticket de la prueba de carga
+PATCH {{baseUrl}}/tickets/{{ticketCarga1}}/estado
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"estado":"CANCELADO","comentario":"Fin de la demostración"}
+
+### Observación en cancelado (422)
+POST {{baseUrl}}/tickets/{{ticketCarga1}}/observaciones
+X-API-KEY: {{apiKey}}
+Content-Type: application/json
+
+{"autor":"Usuario HTTP","contenido":"No permitido"}
+
+### Eliminar ticket cancelado (204)
+DELETE {{baseUrl}}/tickets/{{ticketCarga1}}
+X-API-KEY: {{apiKey}}
+
