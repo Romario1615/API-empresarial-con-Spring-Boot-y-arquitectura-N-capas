@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+*.log
+.env
+logs/
+
+### JVM ###
+hs_err_pid*.log
+replay_pid*.log
