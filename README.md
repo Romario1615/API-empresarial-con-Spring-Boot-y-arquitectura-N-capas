@@ -281,6 +281,7 @@ El detalle incluye los DTOs `usuario`, `categoria`, `tecnico` (puede ser null) y
 ```text
 [HTTP] GET /api/tickets 200 12 ms ip=127.0.0.1 ua=curl/...
 ```
+**Pruebas del interceptor de clave:** `ApiKeyEscrituraTest` comprueba que PUT y PATCH sin `X-API-KEY` responden `401` con el formato `ErrorResponse` y la cabecera `X-Request-Id`, y que con la clave correcta la petición llega al controlador, donde el `GlobalExceptionHandler` responde `404` para un ticket inexistente.
 
 ## Auditoría AOP
 
