@@ -98,6 +98,17 @@ requests/soporte-tickets.http
 | Tecnico / tecnicos | id, nombres(100), email(254), especialidad_id, activo | Email único; especialidad opcional; muchos tickets asignados |
 | Ticket / tickets | id, codigo(40), titulo(120), descripcion(2000), prioridad, estado, fechas | Código único; usuario y categoría obligatorios; técnico opcional |
 | Observacion / observaciones | id, ticket_id, autor(100), contenido(1000), fechaRegistro | Ticket obligatorio; cascada y eliminación de huérfanos |
+
+### Cardinalidades
+
+- **Categoria → Ticket (1:N):** cada ticket pertenece a una categoría obligatoria; una categoría con tickets no se puede eliminar.
+- **Usuario → Ticket (1:N):** el usuario es el solicitante; debe estar activo para crear tickets.
+- **Tecnico → Ticket (1:N):** el técnico es opcional hasta la asignación; máximo 5 tickets activos por técnico.
+- **Categoria → Tecnico (1:N):** la especialidad del técnico es opcional.
+- **Ticket → Observacion (1:N, composición):** al eliminar un ticket se eliminan sus observaciones.
+
+Las pruebas de `ConsultasPersonalizadasTest` validan las consultas derivadas `countByTecnicoIdAndEstadoIn` y `existsByCategoriaId`.
+
 | RegistroAuditoria / auditoria | id, metodo(150), duracionMs, resultado(5), mensajeError(500), fecha | Resultado OK o ERROR; independiente del ticket |
 
 ```mermaid
